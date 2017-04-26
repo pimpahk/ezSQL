@@ -38,6 +38,8 @@
 		var $dbpassword = false;
 		var $dbname = false;
 		var $dbhost = false;
+		var $dbh;
+		var $result;
 		var $rows_affected = false;
 
 		/**********************************************************************
@@ -266,9 +268,11 @@
 							$i=0;
 							while ($i < @pg_num_fields($this->result))
 							{
-			    					$this->col_info[$i]->name = pg_field_name($this->result,$i);
-									$this->col_info[$i]->type = pg_field_type($this->result,$i);
-									$this->col_info[$i]->size = pg_field_size($this->result,$i);
+							        $this->col_info[$i] = (object)array(
+                                        'name' => pg_field_name($this->result,$i),
+                                        'type' => pg_field_type($this->result,$i),
+                                        'size' => pg_field_size($this->result,$i),
+                                    );
 								$i++;
 							}
 
