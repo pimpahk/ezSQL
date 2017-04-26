@@ -194,17 +194,44 @@
 				$this->connect($this->dbuser, $this->dbpassword, $this->dbname, $this->dbhost, $this->port);
 			}
 
-			// Perform the query via std postgresql_query function..
-			$this->result = @pg_query($this->dbh, $query);
+			// Perform the query via std postgresql_query function. PHP help calls this asynchronous but
+			// it won't return until all the queries in $query not executed (on a normal connection at least)
+			if (@pg_send_query($this->dbh, $query) === false) {
+			    $str = 'Unknown query error!';
+			    $this->register_error($str);
+			    $this->show_errors ? trigger_error($str,E_USER_WARNING) : null;
+			    return false;
+			}
 
+			// get the first result of the executed $query
+			if (($this->result = @pg_get_result($this->dbh)) === false) {
+			    $str = 'Unknown database error!';
+			    $this->register_error($str);
+			    $this->show_errors ? trigger_error($str,E_USER_WARNING) : null;
+			    return false;
+			}
+			
+			// read all the rest because $query could contain more queries.
+			// pg_get_result returns false if there is no more result
+			while(@pg_get_result($this->dbh));
 
 			// If there is an error then take note of it..
+			if ($str = @pg_result_error($this->result)) {
+			    $this->register_error($str);
+			    $this->show_errors ? trigger_error($str,E_USER_WARNING) : null;
+			    return false;
+			}
+
+			// If there is a db error then take note of it..
+			// FIXME: probably never happens
 			if ( $str = @pg_last_error($this->dbh) )
 			{
 				$this->register_error($str);
 				$this->show_errors ? trigger_error($str,E_USER_WARNING) : null;
 				return false;
 			}
+
+
 			// Query was an insert, delete, update, replace
 			$is_insert = false;
 			if ( preg_match("/^(insert|delete|update|replace)\s+/i",$query) )
